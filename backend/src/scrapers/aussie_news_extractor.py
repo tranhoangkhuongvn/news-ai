@@ -23,7 +23,7 @@ class ABCNewsExtractor(BaseNewsExtractor):
         return {
             "sports": "/news/sport",
             "lifestyle": "/news/health",  # ABC combines health/lifestyle
-            "music": "/news/arts/music",
+            "music": "/news/music",
             "finance": "/news/business"
         }
     
@@ -97,10 +97,10 @@ class GuardianAUExtractor(BaseNewsExtractor):
     
     def get_category_urls(self) -> Dict[str, str]:
         return {
-            "sports": "/australia-news/sport",
-            "lifestyle": "/australia-news/lifeandstyle",
-            "music": "/music",
-            "finance": "/australia-news/business"
+            "sports": "/au/sport",
+            "lifestyle": "/au/lifeandstyle",
+            "music": "/music/australian-music",
+            "finance": "/au/business"
         }
     
     def get_selectors(self) -> Dict[str, List[str]]:

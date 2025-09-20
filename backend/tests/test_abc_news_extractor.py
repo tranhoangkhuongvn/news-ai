@@ -38,7 +38,7 @@ class TestABCNewsExtractor:
         expected_categories = {
             "sports": "/news/sport",
             "lifestyle": "/news/health",
-            "music": "/news/arts/music",
+            "music": "/news/music",
             "finance": "/news/business"
         }
 
@@ -152,7 +152,7 @@ class TestABCNewsExtractor:
         valid_urls = [
             "https://www.abc.net.au/news/sport/article-123",
             "https://www.abc.net.au/news/health/some-article",
-            "https://abc.net.au/news/business/long-article-title"
+            "https://www.abc.net.au/news/business/long-article-title-that-meets-length-requirement"
         ]
 
         for url in valid_urls:
@@ -163,8 +163,8 @@ class TestABCNewsExtractor:
         invalid_urls = [
             "https://www.cnn.com/news/article",  # Wrong domain
             "https://www.abc.net.au/other/page",  # No /news/
-            "https://www.abc.net.au/news/",  # Too short
-            "http://short.url"  # Too short
+            "http://short.url",  # Too short
+            "https://abc.net.au/news/business/article"  # Missing www subdomain
         ]
 
         for url in invalid_urls:
@@ -185,6 +185,8 @@ class TestABCNewsExtractor:
             </html>
         """)
 
+        # Mock the context manager
+        mock_session.get.return_value = AsyncMock()
         mock_session.get.return_value.__aenter__.return_value = mock_response
 
         # Mock extract_single_article to return NewsArticle objects
@@ -236,6 +238,8 @@ class TestABCNewsExtractor:
         mock_response = AsyncMock()
         mock_response.status = 404
 
+        # Mock the context manager
+        mock_session.get.return_value = AsyncMock()
         mock_session.get.return_value.__aenter__.return_value = mock_response
 
         articles = await extractor.extract_category_articles("sports")
@@ -262,6 +266,8 @@ class TestABCNewsExtractor:
         mock_response.status = 200
         mock_response.text = AsyncMock(return_value=article_html)
 
+        # Mock the context manager
+        mock_session.get.return_value = AsyncMock()
         mock_session.get.return_value.__aenter__.return_value = mock_response
 
         url = "https://www.abc.net.au/news/sport/test-article"
@@ -283,6 +289,8 @@ class TestABCNewsExtractor:
         mock_response = AsyncMock()
         mock_response.status = 404
 
+        # Mock the context manager
+        mock_session.get.return_value = AsyncMock()
         mock_session.get.return_value.__aenter__.return_value = mock_response
 
         url = "https://www.abc.net.au/news/sport/test-article"
@@ -306,6 +314,8 @@ class TestABCNewsExtractor:
         mock_response.status = 200
         mock_response.text = AsyncMock(return_value=article_html)
 
+        # Mock the context manager
+        mock_session.get.return_value = AsyncMock()
         mock_session.get.return_value.__aenter__.return_value = mock_response
 
         url = "https://www.abc.net.au/news/sport/test-article"

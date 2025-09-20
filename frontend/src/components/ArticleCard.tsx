@@ -28,8 +28,29 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, showCategory = true 
     });
   };
 
+  const handleArticleClick = () => {
+    if (article.url) {
+      window.open(article.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleKeyPress = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleArticleClick();
+    }
+  };
+
   return (
-    <div className="article-card">
+    <div
+      className="article-card clickable-card"
+      onClick={handleArticleClick}
+      onKeyPress={handleKeyPress}
+      tabIndex={0}
+      role="button"
+      aria-label={`Read full article: ${article.title}`}
+      title="Click to read full article"
+    >
       <div className="article-card-header">
         {showCategory && (
           <span
@@ -40,11 +61,12 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, showCategory = true 
           </span>
         )}
         <span className="source">{article.source}</span>
+        <span className="external-link-icon">🔗</span>
       </div>
 
-      <h3 className="article-title">{article.title}</h3>
+      <h3 className="article-title clickable-title">{article.title}</h3>
 
-      <p className="article-summary">{article.summary}</p>
+      <p className="article-summary clickable-content">{article.summary}</p>
 
       <div className="highlights">
         <h4>Key Highlights:</h4>
@@ -58,6 +80,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, showCategory = true 
       <div className="article-footer">
         <span className="author">{article.author}</span>
         <span className="publish-date">{formatDate(article.publishedAt)}</span>
+        <span className="read-more">Click to read more →</span>
       </div>
     </div>
   );

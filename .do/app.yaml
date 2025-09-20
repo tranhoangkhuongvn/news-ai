@@ -1,0 +1,46 @@
+name: news-ai-app
+services:
+  # Backend API Service
+  - name: backend-api
+    source_dir: /backend
+    github:
+      repo: your-username/news-ai  # Replace with your GitHub repo
+      branch: main
+    run_command: python run_api.py
+    environment_slug: python
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8000
+    health_check:
+      http_path: /health
+    envs:
+      - key: PORT
+        value: "8000"
+      - key: PYTHONPATH
+        value: "/app/src"
+      - key: DATABASE_PATH
+        value: "/app/data/news_database.db"
+
+  # Frontend Static Site
+  - name: frontend-app
+    source_dir: /frontend
+    github:
+      repo: your-username/news-ai  # Replace with your GitHub repo
+      branch: main
+    build_command: npm ci && npm run build
+    run_command: npm run preview -- --host 0.0.0.0 --port $PORT
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 4173
+    routes:
+      - path: /
+    envs:
+      - key: VITE_API_BASE_URL
+        value: ${backend-api.PUBLIC_URL}
+
+# Database storage
+volumes:
+  - name: news-data
+    size_unit: GB
+    size: 1

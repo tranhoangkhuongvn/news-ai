@@ -169,7 +169,7 @@ if __name__ == "__main__":
         print("\n1. Multi-source extraction...")
         results = await run_extraction_pipeline(
             sources=['abc', 'guardian'],  # Multiple sources
-            categories=['sports', 'finance'],
+            categories=['sports', 'finance', 'music', 'lifestyle'],
             max_articles=10
         )
         print(f"Results: {results}")
@@ -178,7 +178,7 @@ if __name__ == "__main__":
         print("\n2. ABC News only...")
         results = await run_extraction_pipeline(
             sources=['abc'],
-            categories=['sports', 'lifestyle'],
+            categories=['sports', 'lifestyle', 'music', 'lifestyle'],
             max_articles=15
         )
         print(f"ABC Results: {results}")
