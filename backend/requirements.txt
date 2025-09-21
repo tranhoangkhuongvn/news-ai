@@ -9,10 +9,6 @@ requests==2.31.0
 newspaper3k==0.2.8
 openai==1.51.2
 sentence-transformers==3.1.1
-torch==2.0.1+cpu
-torchvision==0.15.2+cpu
-torchaudio==2.0.2+cpu
---find-links https://download.pytorch.org/whl/torch_stable.html
 numpy==2.1.1
 scikit-learn==1.5.2
 pinecone-client==2.2.4

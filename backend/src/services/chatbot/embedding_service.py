@@ -4,10 +4,19 @@ Handles text embeddings using sentence-transformers
 """
 
 import logging
+import os
 from typing import List, Optional, Tuple
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+
+# Optional imports for deployment without ML dependencies
+try:
+    from sentence_transformers import SentenceTransformer
+    from sklearn.metrics.pairwise import cosine_similarity
+    ML_AVAILABLE = True
+except ImportError:
+    SentenceTransformer = None
+    cosine_similarity = None
+    ML_AVAILABLE = False
 
 from src.db.database_conn import NewsDatabase
 from src.models.news_model import NewsArticle
@@ -30,6 +39,10 @@ class EmbeddingService:
 
     def _load_model(self):
         """Lazy load the sentence transformer model"""
+        if not ML_AVAILABLE:
+            logger.warning("ML libraries not available - embeddings disabled")
+            return None
+
         if self.model is None:
             logger.info(f"Loading embedding model: {self.model_name}")
             try:
@@ -37,7 +50,8 @@ class EmbeddingService:
                 logger.info(f"Successfully loaded model: {self.model_name}")
             except Exception as e:
                 logger.error(f"Failed to load model {self.model_name}: {e}")
-                raise
+                logger.warning("Continuing without embeddings - using keyword search only")
+                return None
         return self.model
 
     def create_text_embedding(self, text: str) -> List[float]:
@@ -52,6 +66,10 @@ class EmbeddingService:
         """
         try:
             model = self._load_model()
+
+            # Return empty embedding if model not available
+            if model is None:
+                return []
 
             # Clean and prepare text
             cleaned_text = self._clean_text(text)
