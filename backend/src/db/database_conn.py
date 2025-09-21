@@ -49,6 +49,7 @@ class NewsDatabase:
             # Add new columns to existing tables if they don't exist
             self._add_classification_columns(conn)
             self._add_similarity_tables(conn)
+            self._add_chatbot_tables(conn)
 
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_category ON articles(category);
@@ -409,3 +410,150 @@ class NewsDatabase:
                 clusters.append(cluster_dict)
 
             return clusters
+
+    def _add_chatbot_tables(self, conn):
+        """Add tables for chatbot functionality"""
+        logger.info("Adding chatbot tables to database")
+
+        # Table for storing article embeddings
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS article_embeddings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                article_id INTEGER NOT NULL,
+                embedding_vector TEXT NOT NULL,
+                embedding_model TEXT NOT NULL DEFAULT 'all-MiniLM-L6-v2',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE,
+                UNIQUE(article_id, embedding_model)
+            )
+        """)
+
+        # Table for chat sessions
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_sessions (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                title TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Table for chat messages
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+                content TEXT NOT NULL,
+                metadata TEXT, -- JSON string for additional data
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (session_id) REFERENCES chat_sessions (id) ON DELETE CASCADE
+            )
+        """)
+
+        # Indexes for better performance
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_article_embeddings_article_id ON article_embeddings(article_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON chat_sessions(user_id)")
+
+    def save_article_embedding(self, article_id: int, embedding_vector: list, model_name: str = 'all-MiniLM-L6-v2'):
+        """Save article embedding to database"""
+        try:
+            import json
+            embedding_json = json.dumps(embedding_vector)
+
+            with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+                conn.execute("""
+                    INSERT OR REPLACE INTO article_embeddings
+                    (article_id, embedding_vector, embedding_model)
+                    VALUES (?, ?, ?)
+                """, (article_id, embedding_json, model_name))
+
+            return True
+        except Exception as e:
+            logger.error(f"Error saving embedding for article {article_id}: {e}")
+            return False
+
+    def get_article_embedding(self, article_id: int, model_name: str = 'all-MiniLM-L6-v2'):
+        """Get article embedding from database"""
+        try:
+            import json
+            with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+                cursor = conn.execute("""
+                    SELECT embedding_vector FROM article_embeddings
+                    WHERE article_id = ? AND embedding_model = ?
+                """, (article_id, model_name))
+
+                result = cursor.fetchone()
+                if result:
+                    return json.loads(result[0])
+                return None
+        except Exception as e:
+            logger.error(f"Error getting embedding for article {article_id}: {e}")
+            return None
+
+    def save_chat_session(self, session_id: str, user_id: str = None, title: str = None):
+        """Save or update chat session"""
+        try:
+            with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+                conn.execute("""
+                    INSERT OR REPLACE INTO chat_sessions
+                    (id, user_id, title, updated_at)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                """, (session_id, user_id, title))
+            return True
+        except Exception as e:
+            logger.error(f"Error saving chat session {session_id}: {e}")
+            return False
+
+    def save_chat_message(self, session_id: str, role: str, content: str, metadata: dict = None):
+        """Save chat message to database"""
+        try:
+            import json
+            metadata_json = json.dumps(metadata) if metadata else None
+
+            with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+                cursor = conn.execute("""
+                    INSERT INTO chat_messages
+                    (session_id, role, content, metadata)
+                    VALUES (?, ?, ?, ?)
+                """, (session_id, role, content, metadata_json))
+
+                # Update session timestamp
+                conn.execute("""
+                    UPDATE chat_sessions
+                    SET updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (session_id,))
+
+                return cursor.lastrowid
+        except Exception as e:
+            logger.error(f"Error saving chat message: {e}")
+            return None
+
+    def get_chat_messages(self, session_id: str, limit: int = 50):
+        """Get chat messages for a session"""
+        try:
+            import json
+            with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute("""
+                    SELECT role, content, metadata, created_at
+                    FROM chat_messages
+                    WHERE session_id = ?
+                    ORDER BY created_at ASC
+                    LIMIT ?
+                """, (session_id, limit))
+
+                messages = []
+                for row in cursor.fetchall():
+                    message = dict(row)
+                    if message['metadata']:
+                        message['metadata'] = json.loads(message['metadata'])
+                    messages.append(message)
+
+                return messages
+        except Exception as e:
+            logger.error(f"Error getting chat messages for session {session_id}: {e}")
+            return []

@@ -22,6 +22,7 @@ from api.models import NewsArticleResponse, DashboardResponse, ExtractionRequest
 from api.utils import convert_db_article_to_response, convert_backend_article_to_response
 from services.similarity import SimilarityService
 from services.enhanced_news_pipeline import EnhancedNewsPipelineService
+from api.chat import router as chat_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -54,6 +55,9 @@ app.add_middleware(
 db = NewsDatabase()
 similarity_service = SimilarityService(db)
 enhanced_pipeline_service = EnhancedNewsPipelineService(db)
+
+# Include chat router
+app.include_router(chat_router)
 
 @app.get("/")
 async def root():

@@ -10,10 +10,12 @@ import ErrorMessage from './ErrorMessage';
 import RefreshButton from './RefreshButton';
 import EnhancedStoryCard from './EnhancedStoryCard';
 import EnhancedExtractionProgress from './EnhancedExtractionProgress';
+import ChatBot from './chat/ChatBot';
 
 const Dashboard: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<NewsCategory | 'all'>('all');
   const [showEnhancedStories, setShowEnhancedStories] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const { data: dashboardData, loading, error, refetch } = useDashboardData();
   const { isHealthy } = useAPIHealth();
   const { extractNews, loading: extracting } = useNewsExtraction();
@@ -166,6 +168,37 @@ const Dashboard: React.FC = () => {
                 Smart News Discovery
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setShowChat(!showChat)}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: showChat ? '#3b82f6' : '#f3f4f6',
+              color: showChat ? 'white' : '#6b7280',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginLeft: '8px',
+            }}
+            onMouseEnter={(e) => {
+              if (!showChat) {
+                e.currentTarget.style.backgroundColor = '#e5e7eb';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!showChat) {
+                e.currentTarget.style.backgroundColor = '#f3f4f6';
+              }
+            }}
+          >
+            <span>🤖</span>
+            {showChat ? 'Close Chat' : 'AI News Chat'}
           </button>
         </div>
       </header>
@@ -326,6 +359,96 @@ const Dashboard: React.FC = () => {
           </div>
         </footer>
       </div>
+
+      {/* Floating Chat Button */}
+      {!showChat && (
+        <button
+          onClick={() => setShowChat(true)}
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            zIndex: 1000,
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            boxShadow: '0 4px 16px rgba(59, 130, 246, 0.3)',
+            transition: 'all 0.3s ease',
+            animation: 'pulse 2s infinite'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 16px rgba(59, 130, 246, 0.3)';
+          }}
+        >
+          🤖
+        </button>
+      )}
+
+      {/* Chat Popup - Fixed position in lower right */}
+      {showChat && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            zIndex: 1000,
+            maxWidth: '500px',
+            width: '95vw',
+            height: '700px',
+            maxHeight: '85vh',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            animation: 'slideUp 0.3s ease-out'
+          }}
+        >
+          <ChatBot
+            onClose={() => setShowChat(false)}
+            categoryFilter={selectedCategory !== 'all' ? selectedCategory : undefined}
+          />
+        </div>
+      )}
+
+      {/* CSS Animations */}
+      <style>
+        {`
+          @keyframes slideUp {
+            from {
+              transform: translateY(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+
+          @keyframes pulse {
+            0% {
+              box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+            }
+            50% {
+              box-shadow: 0 4px 16px rgba(59, 130, 246, 0.5), 0 0 0 10px rgba(59, 130, 246, 0.1);
+            }
+            100% {
+              box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+            }
+          }
+        `}
+      </style>
     </div>
   );
 };
