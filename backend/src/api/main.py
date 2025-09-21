@@ -39,8 +39,9 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
-        "http://127.0.0.1:3000"
-    ],  # Vite dev server (various ports) and React dev server
+        "http://127.0.0.1:3000",
+        "https://cool-news-ai-app-2qwl5.ondigitalocean.app"
+    ],  # Vite dev server (various ports), React dev server, and deployed frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
