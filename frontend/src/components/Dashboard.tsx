@@ -37,6 +37,13 @@ const Dashboard: React.FC = () => {
 
   const filteredArticles = getFilteredArticles();
 
+  const getDisplayedArticlesCount = () => {
+    if (showEnhancedStories && enhancedData?.top_stories) {
+      return enhancedData.top_stories.length;
+    }
+    return filteredArticles.length;
+  };
+
   const handleRefresh = async () => {
     await refetch();
   };
@@ -311,8 +318,11 @@ const Dashboard: React.FC = () => {
             )}
           </div>
           <div className="dashboard-stats">
-            <span>Total Articles: {dashboardData?.topArticles?.length || 0}</span>
+            <span>Total Articles: {getDisplayedArticlesCount()}</span>
             <span>API Status: {isHealthy ? '🟢 Connected' : '🔴 Disconnected'}</span>
+          </div>
+          <div className="developer-acknowledgment">
+            <span>Developed by Khuong Tran © 2025</span>
           </div>
         </footer>
       </div>

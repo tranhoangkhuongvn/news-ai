@@ -315,6 +315,19 @@
   color: #666;
 }
 
+.developer-acknowledgment {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.developer-acknowledgment span {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
 /* Loading Spinner Styles */
 .loading-spinner-container {
   display: flex;
@@ -498,5 +511,9 @@
   .dashboard-stats {
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .developer-acknowledgment span {
+    font-size: 0.8rem;
   }
 }
