@@ -31,6 +31,10 @@ The React-based dashboard provides an intuitive interface for accessing Australi
 4. **Discover Priority Stories**: Click "Smart News Discovery" for AI-curated top stories
 5. **Read Articles**: Click any story card to open the original article
 
+### Notes:
+The deployed backend does not have the AI capability yet, we intend to update the deployment VM for the backend. Please refer to the local host version for the AI feature.
+![hippo](./News_Dashboard.gif)
+
 ## Local Setup Instructions
 
 ### Prerequisites
