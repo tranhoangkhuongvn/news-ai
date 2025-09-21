@@ -8,6 +8,7 @@ import asyncio
 
 from src.scrapers.aussie_news_extractor import ExtractorFactory
 from src.db.database_conn import NewsDatabase
+from src.services.categorization.hybrid_classifier import HybridClassifier
 
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,8 @@ class NewsExtractionPipeline:
         self.database = NewsDatabase()
         self.extractors = {}
         self.supported_categories = ["sports", "lifestyle", "music", "finance"]
+        self.classifier = HybridClassifier()
+        logger.info("Initialized NewsExtractionPipeline with intelligent categorization")
     
     async def initialize(self):
         """Initialize the pipeline with async components"""
@@ -120,14 +123,50 @@ class NewsExtractionPipeline:
                 if source not in extraction_results['by_source']:
                     extraction_results['by_source'][source] = 0
                 
-                # Save articles to database
+                # Process and save articles with intelligent categorization
                 for article in articles:
-                    if self.database.save_article(article):
-                        extraction_results['successful_saves'] += 1
-                        extraction_results['by_category'][category] += 1
-                        extraction_results['by_source'][source] += 1
-                    else:
-                        extraction_results['failed_saves'] += 1
+                    try:
+                        # Classify the article using intelligent categorization
+                        classification_result = self.classifier.classify(article)
+
+                        # Log classification details
+                        logger.debug(f"Article '{article.title[:50]}...' classified as '{classification_result.category}' "
+                                   f"with confidence {classification_result.confidence:.3f}")
+
+                        # Use intelligent classification if confident enough
+                        if classification_result.confidence >= self.classifier.confidence_threshold:
+                            # Update article category with intelligent classification
+                            article.category = classification_result.category
+
+                            # Save with classification data
+                            if self.database.save_article_with_classification(article, classification_result):
+                                extraction_results['successful_saves'] += 1
+                                extraction_results['by_category'][classification_result.category] += 1
+                                extraction_results['by_source'][source] += 1
+                            else:
+                                extraction_results['failed_saves'] += 1
+                        else:
+                            # Keep original category if classification not confident enough
+                            logger.info(f"Low confidence classification ({classification_result.confidence:.3f}) "
+                                       f"for article '{article.title[:50]}...', keeping original category '{article.category}'")
+
+                            # Save with original category but include classification attempt
+                            if self.database.save_article_with_classification(article, classification_result):
+                                extraction_results['successful_saves'] += 1
+                                extraction_results['by_category'][article.category] += 1
+                                extraction_results['by_source'][source] += 1
+                            else:
+                                extraction_results['failed_saves'] += 1
+
+                    except Exception as e:
+                        logger.error(f"Error classifying article '{article.title[:50]}...': {e}")
+                        # Fallback to original save method
+                        if self.database.save_article(article):
+                            extraction_results['successful_saves'] += 1
+                            extraction_results['by_category'][article.category] += 1
+                            extraction_results['by_source'][source] += 1
+                        else:
+                            extraction_results['failed_saves'] += 1
             
             extraction_results['extraction_time'] = time.time() - start_time
             
