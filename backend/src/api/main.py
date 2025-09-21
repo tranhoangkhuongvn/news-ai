@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 import asyncio
 import logging
 import os
@@ -20,6 +21,7 @@ from db.database_conn import NewsDatabase
 from api.models import NewsArticleResponse, DashboardResponse, ExtractionRequest, ExtractionResponse
 from api.utils import convert_db_article_to_response, convert_backend_article_to_response
 from services.similarity import SimilarityService
+from services.enhanced_news_pipeline import EnhancedNewsPipelineService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -51,6 +53,7 @@ app.add_middleware(
 # Initialize database and services
 db = NewsDatabase()
 similarity_service = SimilarityService(db)
+enhanced_pipeline_service = EnhancedNewsPipelineService(db)
 
 @app.get("/")
 async def root():
@@ -250,7 +253,7 @@ async def get_latest_articles(
     try:
         # Use default sources and categories if not specified
         if not sources:
-            sources = ['abc', 'guardian']  # Default to ABC and Guardian for speed
+            sources = ['abc', 'guardian', 'smh', 'news_com_au']  # Default to all 4 sources
         if not categories:
             categories = ['sports', 'finance', 'lifestyle', 'music']
 
@@ -275,6 +278,98 @@ async def get_latest_articles(
     except Exception as e:
         logger.error(f"Error extracting latest articles: {e}")
         raise HTTPException(status_code=500, detail="Failed to extract latest articles")
+
+@app.get("/articles/enhanced-latest")
+async def get_enhanced_latest_articles(
+    sources: Optional[List[str]] = Query(None, description="Sources to extract from (default: all 4 sources)"),
+    categories: Optional[List[str]] = Query(None, description="Categories to include (default: all 4 categories)"),
+    articles_per_category: int = Query(20, ge=1, le=50, description="Articles per category per source")
+):
+    """
+    Enhanced 'Get Latest News' feature with intelligent prioritization.
+
+    This endpoint:
+    1. Extracts articles from multiple sources (up to 320 total articles)
+    2. Runs AI classification for proper categorization
+    3. Detects similarities and clusters related articles
+    4. Applies intelligent prioritization based on breaking news indicators
+    5. Returns top 10 prioritized stories with comprehensive metadata
+
+    Processing typically takes 3-5 minutes for full extraction (320 articles).
+    """
+    try:
+        logger.info(f"Starting enhanced latest articles extraction with "
+                   f"sources: {sources}, categories: {categories}, "
+                   f"articles_per_category: {articles_per_category}")
+
+        # Run the enhanced pipeline
+        results = await enhanced_pipeline_service.run_enhanced_extraction(
+            sources=sources,
+            categories=categories,
+            articles_per_category=articles_per_category
+        )
+
+        if not results['success']:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Enhanced extraction failed: {results.get('error', 'Unknown error')}"
+            )
+
+        # Return comprehensive results
+        return {
+            "success": True,
+            "message": "Enhanced latest articles extraction completed successfully",
+            "processing_time": results['processing_time'],
+            "top_stories": results['top_stories'],
+            "metrics": {
+                "total_articles_extracted": results['metrics']['total_articles_extracted'],
+                "similar_pairs_found": results['metrics']['similar_pairs_found'],
+                "clusters_created": results['metrics']['clusters_created'],
+                "stories_prioritized": results['metrics']['stories_prioritized'],
+                "top_stories_selected": results['metrics']['top_stories_count']
+            },
+            "extraction_summary": {
+                "expected_articles": results['extraction'].get('expected_articles', 0),
+                "extraction_rate": results['extraction'].get('extraction_rate', 0),
+                "sources_processed": results['extraction'].get('sources_processed', 0),
+                "categories_processed": results['extraction'].get('categories_processed', 0),
+                "by_category": results['extraction'].get('by_category', {}),
+                "by_source": results['extraction'].get('by_source', {})
+            },
+            "similarity_summary": {
+                "total_comparisons": results['similarity'].get('total_comparisons', 0),
+                "similarity_rate": results['similarity'].get('similarity_rate', 0),
+                "average_similarity_score": results['similarity'].get('average_similarity_score', 0)
+            },
+            "prioritization_summary": {
+                "total_stories_analyzed": results['prioritization'].get('total_stories_analyzed', 0),
+                "average_priority_score": results['prioritization'].get('average_priority_score', 0),
+                "priority_distribution": results['prioritization'].get('priority_distribution', {})
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in enhanced latest articles extraction: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Enhanced extraction failed: {str(e)}"
+        )
+
+@app.get("/articles/enhanced-status")
+async def get_enhanced_pipeline_status():
+    """Get status and health information for the enhanced news pipeline."""
+    try:
+        status = await enhanced_pipeline_service.get_pipeline_status()
+        return {
+            "success": True,
+            "pipeline_status": status,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting enhanced pipeline status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get pipeline status")
 
 # Similarity Detection Endpoints
 

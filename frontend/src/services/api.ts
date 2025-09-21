@@ -1,4 +1,4 @@
-import type { NewsArticle, DashboardData, NewsSource } from '../types/news';
+import type { NewsArticle, DashboardData, NewsSource, EnhancedExtractionResponse } from '../types/news';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -127,6 +127,61 @@ class NewsAPI {
 
     const url = `/articles/latest${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     return this.fetchWithErrorHandling<NewsArticle[]>(url);
+  }
+
+  /**
+   * Get enhanced latest articles with intelligent prioritization
+   *
+   * This endpoint:
+   * 1. Extracts articles from multiple sources (up to 320 total articles)
+   * 2. Runs AI classification for proper categorization
+   * 3. Detects similarities and clusters related articles
+   * 4. Applies intelligent prioritization based on breaking news indicators
+   * 5. Returns top 10 prioritized stories with comprehensive metadata
+   */
+  async getEnhancedLatestArticles(params?: {
+    sources?: string[];
+    categories?: string[];
+    articles_per_category?: number;
+  }): Promise<APIResponse<EnhancedExtractionResponse>> {
+    const searchParams = new URLSearchParams();
+
+    if (params?.sources) {
+      params.sources.forEach(source => searchParams.append('sources', source));
+    }
+    if (params?.categories) {
+      params.categories.forEach(category => searchParams.append('categories', category));
+    }
+    if (params?.articles_per_category) {
+      searchParams.append('articles_per_category', params.articles_per_category.toString());
+    }
+
+    const url = `/articles/enhanced-latest${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    return this.fetchWithErrorHandling<EnhancedExtractionResponse>(url);
+  }
+
+  /**
+   * Get enhanced pipeline status and health information
+   */
+  async getEnhancedPipelineStatus(): Promise<APIResponse<{
+    success: boolean;
+    pipeline_status: {
+      database: {
+        total_articles: number;
+        classified_articles: number;
+        by_category: Record<string, number>;
+        by_source: Record<string, number>;
+      };
+      similarity: {
+        recent_similarities: number;
+        average_score: number;
+      };
+      pipeline_ready: boolean;
+      last_check: string;
+    };
+    timestamp: string;
+  }>> {
+    return this.fetchWithErrorHandling('/articles/enhanced-status');
   }
 }
 
