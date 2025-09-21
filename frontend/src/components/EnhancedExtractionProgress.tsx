@@ -49,11 +49,11 @@ const EnhancedExtractionProgress: React.FC<EnhancedExtractionProgressProps> = ({
   const getPhaseProgress = (phase: string) => {
     switch (phase) {
       case 'extraction':
-        return 25;
+        return 35;
       case 'similarity':
-        return 50;
+        return 65;
       case 'prioritization':
-        return 75;
+        return 85;
       case 'complete':
         return 100;
       default:

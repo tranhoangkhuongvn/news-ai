@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Bar Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .progress-test {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 24px;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background-color: #f3f4f6;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #3b82f6;
+            transition: width 0.5s ease-in-out;
+            width: 0%;
+        }
+        .phase-indicator {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        .test-button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .phase-steps {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        .step-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            transition: all 0.3s ease-in-out;
+        }
+        .step-label {
+            font-size: 11px;
+            transition: all 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-test">
+        <h1>Smart News Discovery Progress Bar Test</h1>
+        <p>This test simulates the improved progress bar behavior with realistic phase transitions.</p>
+
+        <button class="test-button" onclick="startTest()">🧪 Test Progress Bar</button>
+
+        <div class="phase-indicator" id="phase-indicator">Ready to test</div>
+
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+
+        <div class="phase-steps">
+            <div class="step">
+                <div class="step-icon" id="step-extraction" style="background-color: #f3f4f6; color: #6b7280;">📰</div>
+                <span class="step-label">Extract</span>
+            </div>
+            <div class="step">
+                <div class="step-icon" id="step-similarity" style="background-color: #f3f4f6; color: #6b7280;">🔗</div>
+                <span class="step-label">Cluster</span>
+            </div>
+            <div class="step">
+                <div class="step-icon" id="step-prioritization" style="background-color: #f3f4f6; color: #6b7280;">⭐</div>
+                <span class="step-label">Prioritize</span>
+            </div>
+            <div class="step">
+                <div class="step-icon" id="step-complete" style="background-color: #f3f4f6; color: #6b7280;">✅</div>
+                <span class="step-label">Complete</span>
+            </div>
+        </div>
+
+        <div id="progress-percentage" style="text-align: center; margin-top: 8px; font-size: 12px; color: #6b7280;">0% Complete</div>
+    </div>
+
+    <script>
+        function getPhaseColor(phase) {
+            switch (phase) {
+                case 'extraction': return '#3b82f6';
+                case 'similarity': return '#8b5cf6';
+                case 'prioritization': return '#f59e0b';
+                case 'complete': return '#10b981';
+                default: return '#6b7280';
+            }
+        }
+
+        function getPhaseProgress(phase) {
+            switch (phase) {
+                case 'extraction': return 35;
+                case 'similarity': return 65;
+                case 'prioritization': return 85;
+                case 'complete': return 100;
+                default: return 0;
+            }
+        }
+
+        function updateProgress(phase, message) {
+            const progressBar = document.getElementById('progress-bar');
+            const phaseIndicator = document.getElementById('phase-indicator');
+            const progressPercentage = document.getElementById('progress-percentage');
+
+            const progress = getPhaseProgress(phase);
+            const color = getPhaseColor(phase);
+
+            progressBar.style.width = progress + '%';
+            progressBar.style.backgroundColor = color;
+            phaseIndicator.textContent = message;
+            phaseIndicator.style.color = color;
+            progressPercentage.textContent = progress + '% Complete';
+
+            // Update step icons
+            const steps = ['extraction', 'similarity', 'prioritization', 'complete'];
+            steps.forEach(step => {
+                const stepIcon = document.getElementById('step-' + step);
+                const stepProgress = getPhaseProgress(step);
+                const isCompleted = stepProgress <= progress;
+
+                if (isCompleted) {
+                    stepIcon.style.backgroundColor = getPhaseColor(step);
+                    stepIcon.style.color = '#ffffff';
+                } else {
+                    stepIcon.style.backgroundColor = '#f3f4f6';
+                    stepIcon.style.color = '#6b7280';
+                }
+            });
+        }
+
+        function startTest() {
+            // Reset
+            updateProgress('', 'Starting Smart News Discovery...');
+
+            // Phase 1: Extraction (immediate)
+            setTimeout(() => {
+                updateProgress('extraction', 'Extracting articles from news sources...');
+            }, 100);
+
+            // Phase 2: Similarity detection (after 1.5 seconds)
+            setTimeout(() => {
+                updateProgress('similarity', 'Detecting similarities and clustering articles...');
+            }, 1600);
+
+            // Phase 3: Prioritization (after 2.5 seconds)
+            setTimeout(() => {
+                updateProgress('prioritization', 'Applying intelligent prioritization...');
+            }, 2600);
+
+            // Phase 4: Complete (simulate API completion after 4 seconds)
+            setTimeout(() => {
+                updateProgress('complete', 'Enhanced extraction completed successfully!');
+            }, 4100);
+
+            // Clear progress after completion
+            setTimeout(() => {
+                document.getElementById('phase-indicator').textContent = 'Test completed! The progress bar now shows smooth transitions instead of jumping from 25% to 100%.';
+                document.getElementById('phase-indicator').style.color = '#10b981';
+            }, 7100);
+        }
+    </script>
+</body>
+</html>

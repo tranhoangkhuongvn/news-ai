@@ -214,11 +214,31 @@ export function useEnhancedNewsExtraction() {
     setError(null);
     setData(null);
 
-    // Show progress updates
-    setProgress({ phase: 'extraction', message: 'Extracting articles from news sources...' });
+    // Simulate realistic progress phases during the API call
+    const simulateProgress = () => {
+      // Phase 1: Extraction (0-60% of time)
+      setProgress({ phase: 'extraction', message: 'Extracting articles from news sources...' });
+
+      // Phase 2: Similarity detection (60-80% of time)
+      const similarityTimer = setTimeout(() => {
+        setProgress({ phase: 'similarity', message: 'Detecting similarities and clustering articles...' });
+      }, 1500); // Show extraction for 1.5 seconds
+
+      // Phase 3: Prioritization (80-95% of time)
+      const prioritizationTimer = setTimeout(() => {
+        setProgress({ phase: 'prioritization', message: 'Applying intelligent prioritization...' });
+      }, 2500); // Switch to prioritization after 2.5 seconds
+
+      return [similarityTimer, prioritizationTimer];
+    };
+
+    const timers = simulateProgress();
 
     try {
       const response = await newsAPI.getEnhancedLatestArticles(params);
+
+      // Clear any remaining timers
+      timers.forEach(timer => clearTimeout(timer));
 
       if (response.error) {
         setError(response.error);
@@ -228,8 +248,10 @@ export function useEnhancedNewsExtraction() {
       }
 
       if (response.data) {
-        setData(response.data);
+        // Show completion phase
         setProgress({ phase: 'complete', message: 'Enhanced extraction completed successfully!' });
+
+        setData(response.data);
 
         // Clear progress after a short delay
         setTimeout(() => setProgress(null), 3000);
@@ -241,6 +263,9 @@ export function useEnhancedNewsExtraction() {
       setLoading(false);
       return null;
     } catch (err) {
+      // Clear any remaining timers on error
+      timers.forEach(timer => clearTimeout(timer));
+
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       setProgress(null);
