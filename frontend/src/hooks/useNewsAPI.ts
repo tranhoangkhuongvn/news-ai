@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { newsAPI, type APIResponse } from '../services/api';
-import type { NewsArticle, DashboardData, NewsSource, NewsCategory } from '../types/news';
+import { newsAPI } from '../services/api';
+import type { NewsArticle, DashboardData, NewsSource } from '../types/news';
 
 interface UseNewsAPIState<T> {
   data: T | null;
