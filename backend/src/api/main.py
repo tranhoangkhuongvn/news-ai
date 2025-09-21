@@ -19,6 +19,7 @@ from scrapers.aussie_news_extractor import ExtractorFactory
 from db.database_conn import NewsDatabase
 from api.models import NewsArticleResponse, DashboardResponse, ExtractionRequest, ExtractionResponse
 from api.utils import convert_db_article_to_response, convert_backend_article_to_response
+from services.similarity import SimilarityService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -47,8 +48,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize database
+# Initialize database and services
 db = NewsDatabase()
+similarity_service = SimilarityService(db)
 
 @app.get("/")
 async def root():
@@ -273,6 +275,114 @@ async def get_latest_articles(
     except Exception as e:
         logger.error(f"Error extracting latest articles: {e}")
         raise HTTPException(status_code=500, detail="Failed to extract latest articles")
+
+# Similarity Detection Endpoints
+
+@app.get("/articles/{article_id}/similar")
+async def get_similar_articles(article_id: int, limit: int = Query(5, ge=1, le=20)):
+    """Get articles similar to the specified article"""
+    try:
+        similar_articles = similarity_service.find_similar_articles(article_id, limit)
+
+        if not similar_articles:
+            return {"message": "No similar articles found", "similar_articles": []}
+
+        return {
+            "article_id": article_id,
+            "similar_articles": similar_articles,
+            "count": len(similar_articles)
+        }
+
+    except Exception as e:
+        logger.error(f"Error finding similar articles for {article_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to find similar articles")
+
+@app.get("/articles/clusters")
+async def get_article_clusters(limit: int = Query(10, ge=1, le=50)):
+    """Get clusters of similar articles grouped by story"""
+    try:
+        clusters = similarity_service.get_article_clusters(limit)
+
+        return {
+            "clusters": clusters,
+            "count": len(clusters)
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting article clusters: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get article clusters")
+
+@app.post("/articles/detect-similarity")
+async def detect_article_similarities(hours_back: int = Query(48, ge=1, le=168)):
+    """Trigger similarity detection for recent articles"""
+    try:
+        logger.info(f"Starting similarity detection for articles from last {hours_back} hours")
+
+        metrics = similarity_service.detect_all_similarities(hours_back)
+
+        return {
+            "success": True,
+            "message": "Similarity detection completed",
+            "metrics": {
+                "total_comparisons": metrics.total_comparisons,
+                "similar_pairs_found": metrics.similar_pairs_found,
+                "clusters_created": metrics.clusters_created,
+                "average_similarity_score": round(metrics.average_similarity_score, 3),
+                "processing_time": round(metrics.processing_time, 2),
+                "similarity_rate": round(metrics.similarity_rate, 1)
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error during similarity detection: {e}")
+        return {
+            "success": False,
+            "message": f"Similarity detection failed: {str(e)}",
+            "metrics": None
+        }
+
+@app.get("/articles/similarity-stats")
+async def get_similarity_statistics():
+    """Get statistics about similarity detection performance"""
+    try:
+        # Get recent similarity data from database
+        recent_similarities = db.get_recent_similarities(limit=100)
+
+        if not recent_similarities:
+            return {
+                "message": "No similarity data available",
+                "stats": {
+                    "total_similarities": 0,
+                    "average_score": 0.0,
+                    "high_similarity_count": 0,
+                    "recent_detections": 0
+                }
+            }
+
+        # Calculate statistics
+        scores = [s['similarity_score'] for s in recent_similarities]
+        high_similarity_count = len([s for s in scores if s >= 0.8])
+
+        stats = {
+            "total_similarities": len(recent_similarities),
+            "average_score": round(sum(scores) / len(scores), 3),
+            "high_similarity_count": high_similarity_count,
+            "recent_detections": len([s for s in recent_similarities if s.get('created_at')]),
+            "score_distribution": {
+                "high (≥0.8)": high_similarity_count,
+                "medium (0.6-0.8)": len([s for s in scores if 0.6 <= s < 0.8]),
+                "low (<0.6)": len([s for s in scores if s < 0.6])
+            }
+        }
+
+        return {
+            "message": "Similarity statistics retrieved successfully",
+            "stats": stats
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting similarity statistics: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get similarity statistics")
 
 if __name__ == "__main__":
     import uvicorn
