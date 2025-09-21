@@ -51,9 +51,13 @@ class ABCNewsExtractor(BaseNewsExtractor):
                 '[rel="author"]'
             ],
             'content': [
+                '[data-component="Text"] p',
                 '[data-component="Text"]',
+                '.ArticleBody_container p',
                 '.ArticleBody_container',
+                '.RichText p',
                 '.RichText',
+                'article p',
                 'article'
             ],
             'tags': [
@@ -65,7 +69,7 @@ class ABCNewsExtractor(BaseNewsExtractor):
     def get_article_links_from_category_page(self, soup: BeautifulSoup, category_url: str) -> List[str]:
         """ABC News specific method to extract article links from category pages"""
         article_links = set()
-        
+
         # Multiple selectors to catch different article types on ABC News
         selectors = [
             'a[href*="/news/"]',
@@ -75,16 +79,48 @@ class ABCNewsExtractor(BaseNewsExtractor):
             '.Article_link',
             '.Story_link'
         ]
-        
+
         for selector in selectors:
             links = soup.select(selector)
             for link in links:
                 href = link.get('href')
                 if href and '/news/' in href:
                     full_url = urljoin(self.base_url, href)
-                    article_links.add(full_url)
-        
+                    url_slug = full_url.split('/')[-1]
+
+                    # Enhanced filtering for actual articles - now accept numeric IDs too
+                    if ('/topic/' not in full_url and
+                        '#' not in full_url):  # Skip anchor links and topic pages
+                        article_links.add(full_url)
+
         return list(article_links)
+
+    def validate_article_url(self, url: str) -> bool:
+        """ABC-specific URL validation"""
+        url_slug = url.split('/')[-1]
+
+        # Exclude known non-article patterns
+        excluded_patterns = [
+            'tok-pisin', 'analysis-and-opinion', 'sport', 'business', 'health', 'music',
+            'lifestyle', 'entertainment', 'politics', 'rural', 'science', 'arts', 'religion',
+            'corrections', 'contact', 'about', 'editorial', 'weather', 'radio', 'tv', 'for-you',
+            'ashes', 'rugby-league', 'environment', 'rugby-union-world-cup', 'nrl'
+        ]
+
+        # ABC News uses numeric article IDs or descriptive slugs
+        return (
+            'abc.net.au' in url and
+            '/news/' in url and
+            '/topic/' not in url and
+            '#' not in url and
+            url_slug not in excluded_patterns and
+            (
+                # Either numeric article ID (at least 8 digits)
+                (url_slug.isdigit() and len(url_slug) >= 8) or
+                # Or descriptive slug with dashes (at least 2 dashes for specificity)
+                ('-' in url_slug and url_slug.count('-') >= 2 and len(url_slug) > 8)
+            )
+        )
 
 class GuardianAUExtractor(BaseNewsExtractor):
     """The Guardian Australia specific extractor"""
@@ -127,9 +163,12 @@ class GuardianAUExtractor(BaseNewsExtractor):
                 '[data-component="contributor-link"]'
             ],
             'content': [
+                '.content__article-body p',
                 '.content__article-body',
                 '[data-component="text-block"]',
-                'article .content__main'
+                'article .content__main',
+                '.article-body-commercial-selector',
+                '.content__main-column p'
             ],
             'tags': [
                 '.submeta__keywords a',
@@ -140,14 +179,14 @@ class GuardianAUExtractor(BaseNewsExtractor):
     def get_article_links_from_category_page(self, soup: BeautifulSoup, category_url: str) -> List[str]:
         """Guardian AU specific method to extract article links"""
         article_links = set()
-        
+
         selectors = [
             '.fc-item__link',
             '.u-faux-block-link__overlay',
             'a[data-link-name="article"]',
             '.headline-link'
         ]
-        
+
         for selector in selectors:
             links = soup.select(selector)
             for link in links:
@@ -158,20 +197,22 @@ class GuardianAUExtractor(BaseNewsExtractor):
                         full_url = urljoin(self.base_url, href)
                     else:
                         full_url = href
-                    
+
                     # Filter for Australian content and valid articles
-                    if ('/australia-news/' in full_url or '/music' in full_url) and len(full_url) > MAX_ARTICLES:
+                    if ('/australia-news/' in full_url or '/music' in full_url or '/sport' in full_url or '/lifeandstyle' in full_url or '/business' in full_url) and len(full_url) > 50:
                         article_links.add(full_url)
-        
+
         return list(article_links)
     
     def validate_article_url(self, url: str) -> bool:
         """Guardian-specific URL validation"""
         return (
             'theguardian.com' in url and
-            any(path in url for path in ['/australia-news/', '/music/', '/sport/']) and
+            any(path in url for path in ['/australia-news/', '/music/', '/sport/', '/lifeandstyle/', '/business/']) and
             '/live/' not in url and  # Exclude live blogs
-            '/gallery/' not in url  # Exclude photo galleries
+            '/gallery/' not in url and  # Exclude photo galleries
+            '/series/' not in url and  # Exclude series pages
+            len(url.split('/')[-1]) > 10  # Ensure URL has a substantial article slug
         )
 
 class NewsComAUExtractor(BaseNewsExtractor):
@@ -252,7 +293,8 @@ class NewsComAUExtractor(BaseNewsExtractor):
         return (
             'news.com.au' in url and
             '/story/' in url and
-            len(url) > 25
+            len(url) > 25 and
+            len(url.split('/')[-1]) > 10  # Ensure URL has substantial article slug
         )
 
 class SMHExtractor(BaseNewsExtractor):
@@ -305,23 +347,34 @@ class SMHExtractor(BaseNewsExtractor):
     def get_article_links_from_category_page(self, soup: BeautifulSoup, category_url: str) -> List[str]:
         """SMH specific method to extract article links"""
         article_links = set()
-        
+
         selectors = [
             'a[href*="/story/"]',
             '.story-link',
             '[data-component="Link"]'
         ]
-        
+
         for selector in selectors:
             links = soup.select(selector)
             for link in links:
                 href = link.get('href')
                 if href:
                     full_url = urljoin(self.base_url, href)
-                    if any(path in full_url for path in ['/sport/', '/lifestyle/', '/culture/', '/business/']):
+                    if (any(path in full_url for path in ['/sport/', '/lifestyle/', '/culture/', '/business/']) and
+                        '/story/' in full_url and
+                        len(full_url.split('/')[-1]) > 10):
                         article_links.add(full_url)
-        
+
         return list(article_links)
+
+    def validate_article_url(self, url: str) -> bool:
+        """SMH-specific URL validation"""
+        return (
+            'smh.com.au' in url and
+            '/story/' in url and
+            len(url) > 30 and
+            len(url.split('/')[-1]) > 10  # Ensure URL has substantial article slug
+        )
     
 
 class ExtractorFactory:

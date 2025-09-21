@@ -16,7 +16,6 @@ class NewsExtractionPipeline:
     """Updated main pipeline orchestrator using the extractor factory"""
     
     def __init__(self):
-        from news_extraction_pipeline import NewsDatabase  # Import from original file
         self.database = NewsDatabase()
         self.extractors = {}
         self.supported_categories = ["sports", "lifestyle", "music", "finance"]

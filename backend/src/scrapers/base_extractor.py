@@ -65,10 +65,17 @@ class BaseNewsExtractor(ABC):
         """Validate if URL is a valid article URL for this source"""
         # Default implementation - can be overridden
         parsed_url = urlparse(url)
+        url_slug = url.split('/')[-1]
+
         return (
             parsed_url.netloc.endswith(urlparse(self.base_url).netloc) and
-            '/news/' in url.lower() and
-            len(url) > 20  # Basic length check
+            len(url) > 30 and  # Reasonable URL length
+            len(url_slug) > 5 and  # Article slug should be substantial
+            '-' in url_slug and  # Most article URLs have dashes in slugs
+            not url.endswith('/') and  # Avoid category/section pages
+            '/category/' not in url.lower() and
+            '/section/' not in url.lower() and
+            '/tag/' not in url.lower()
         )
     
     def preprocess_content(self, content: str) -> str:
@@ -173,6 +180,10 @@ class BaseNewsExtractor(ABC):
                 
                 if not title or len(title.strip()) < 5:  # Skip if we can't get basic info
                     logger.debug(f"Skipping article with insufficient title: {url}")
+                    return None
+
+                if not content or len(content.strip()) < 200:  # Skip if content is too short
+                    logger.debug(f"Skipping article with insufficient content: {url}")
                     return None
                 
                 # Preprocess content
