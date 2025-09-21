@@ -240,10 +240,10 @@ class NewsComAUExtractor(BaseNewsExtractor):
                 '.article-title'
             ],
             'summary': [
-                '.story-subtitle',
-                '.article-subtitle',
                 'meta[name="description"]',
-                'meta[property="og:description"]'
+                'meta[property="og:description"]',
+                '.story-subtitle',
+                '.article-subtitle'
             ],
             'published_date': [
                 'time[datetime]',
@@ -251,16 +251,22 @@ class NewsComAUExtractor(BaseNewsExtractor):
                 '.story-info time'
             ],
             'author': [
+                '[data-module="Byline"] a',
+                '.byline a',
                 '.story-byline a',
                 '.author-name',
                 '[rel="author"]'
             ],
             'content': [
-                '.story-body',
-                '.article-content',
-                '.story-content'
+                'div[class*="story"] p',  # News.com.au uses div with story-related classes
+                'article p',             # Article paragraphs as fallback
+                'div[class*="content"] p', # Content div paragraphs
+                '.story-body',           # Legacy selector
+                '.article-content',      # Legacy selector
+                '.story-content'         # Legacy selector
             ],
             'tags': [
+                '.topics a',
                 '.story-topics a',
                 '.article-tags a'
             ]
@@ -269,32 +275,37 @@ class NewsComAUExtractor(BaseNewsExtractor):
     def get_article_links_from_category_page(self, soup: BeautifulSoup, category_url: str) -> List[str]:
         """News.com.au specific method to extract article links"""
         article_links = set()
-        
+
+        # Updated selectors for current News.com.au structure
         selectors = [
+            'a[href*="/news-story/"]',  # Current URL pattern
+            'a[href*="/story/"]',       # Legacy pattern
             '.story-block a',
             '.module-story a',
             '.story-headline-link',
-            'a[href*="/story/"]'
+            'h3 a',                     # Headline links
+            '.headline a'               # Alternative headline links
         ]
-        
+
         for selector in selectors:
             links = soup.select(selector)
             for link in links:
                 href = link.get('href')
                 if href:
                     full_url = urljoin(self.base_url, href)
-                    if '/story/' in full_url:
+                    if ('/news-story/' in full_url or '/story/' in full_url):
                         article_links.add(full_url)
-        
+
         return list(article_links)
     
     def validate_article_url(self, url: str) -> bool:
         """News.com.au specific URL validation"""
         return (
             'news.com.au' in url and
-            '/story/' in url and
-            len(url) > 25 and
-            len(url.split('/')[-1]) > 10  # Ensure URL has substantial article slug
+            ('/news-story/' in url or '/story/' in url) and
+            len(url) > 50 and
+            any(path in url for path in ['/sport/', '/lifestyle/', '/entertainment/', '/finance/', '/business/']) and
+            not url.endswith('/')  # Avoid category pages
         )
 
 class SMHExtractor(BaseNewsExtractor):
@@ -336,7 +347,12 @@ class SMHExtractor(BaseNewsExtractor):
             ],
             'content': [
                 '[data-component="TextBlock"]',
-                '.article-body'
+                '.article-body',
+                '.story-body',
+                '.content-body',
+                'div[class*="story"] p',
+                'article p',
+                '.story-content p'
             ],
             'tags': [
                 '.topics a',
@@ -348,10 +364,14 @@ class SMHExtractor(BaseNewsExtractor):
         """SMH specific method to extract article links"""
         article_links = set()
 
+        # Updated selectors for current SMH website structure
         selectors = [
-            'a[href*="/story/"]',
-            '.story-link',
-            '[data-component="Link"]'
+            'a[href*="/2025/"]',  # Current year articles
+            'a[href*="/2024/"]',  # Recent articles
+            'a[href*="-p5"]',     # SMH article ID pattern
+            'h3 a',               # Headline links
+            '.story-link',        # Legacy selector
+            '[data-component="Link"]'  # Component-based links
         ]
 
         for selector in selectors:
@@ -360,9 +380,10 @@ class SMHExtractor(BaseNewsExtractor):
                 href = link.get('href')
                 if href:
                     full_url = urljoin(self.base_url, href)
+                    # Updated filtering for SMH URL patterns
                     if (any(path in full_url for path in ['/sport/', '/lifestyle/', '/culture/', '/business/']) and
-                        '/story/' in full_url and
-                        len(full_url.split('/')[-1]) > 10):
+                        ('-p5' in full_url or '/20' in full_url) and  # SMH article patterns
+                        len(full_url) > 50):  # Reasonable URL length
                         article_links.add(full_url)
 
         return list(article_links)
@@ -371,9 +392,11 @@ class SMHExtractor(BaseNewsExtractor):
         """SMH-specific URL validation"""
         return (
             'smh.com.au' in url and
-            '/story/' in url and
-            len(url) > 30 and
-            len(url.split('/')[-1]) > 10  # Ensure URL has substantial article slug
+            ('-p5' in url or '/20' in url) and  # SMH article patterns
+            any(path in url for path in ['/sport/', '/lifestyle/', '/culture/', '/business/']) and
+            len(url) > 50 and
+            not url.endswith('/') and  # Avoid category pages
+            'live-updates' not in url  # Skip live blog pages for now
         )
     
 

@@ -136,8 +136,28 @@ async def get_dashboard_data():
         # Convert to response format
         articles = [convert_db_article_to_response(article) for article in all_articles]
 
-        # Get top 10 most recent articles
-        top_articles = articles[:10]
+        # Get balanced selection of articles from all sources
+        source_articles = {}
+        for article in articles:
+            source = article.source
+            if source not in source_articles:
+                source_articles[source] = []
+            source_articles[source].append(article)
+
+        # Get 2-3 articles from each source for balanced representation
+        top_articles = []
+        articles_per_source = max(2, 10 // len(source_articles)) if source_articles else 10
+
+        for source, source_article_list in source_articles.items():
+            top_articles.extend(source_article_list[:articles_per_source])
+
+        # If we still need more articles, add the remaining newest ones
+        if len(top_articles) < 10:
+            remaining = [a for a in articles if a not in top_articles]
+            top_articles.extend(remaining[:10 - len(top_articles)])
+
+        # Limit to 10 articles total
+        top_articles = top_articles[:10]
 
         # Group articles by category
         categories = {

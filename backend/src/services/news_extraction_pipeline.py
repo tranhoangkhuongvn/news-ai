@@ -25,16 +25,29 @@ class NewsExtractionPipeline:
     
     async def initialize(self):
         """Initialize the pipeline with async components"""
-        # Create aiohttp session with optimized settings
+        # Create aiohttp session with optimized settings and better headers
         timeout = aiohttp.ClientTimeout(total=30)
         connector = aiohttp.TCPConnector(limit=100, limit_per_host=20)
-        
+
+        # Enhanced headers to avoid blocking
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-AU,en;q=0.9,en-US;q=0.8',
+            'Accept-Encoding': 'gzip, deflate',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Cache-Control': 'max-age=0'
+        }
+
         self.session = aiohttp.ClientSession(
             timeout=timeout,
             connector=connector,
-            headers={
-                'User-Agent': 'Mozilla/5.0 (compatible; NewsExtractor/1.0; +http://example.com/bot)'
-            }
+            headers=headers
         )
         
         # Initialize extractors for all available sources
@@ -52,7 +65,7 @@ class NewsExtractionPipeline:
         """Main extraction method supporting multiple sources"""
         
         if sources is None:
-            sources = ['abc']  # Default to ABC News
+            sources = ['abc', 'guardian', 'smh', 'news_com_au']  # Use all available sources
         if categories is None:
             categories = self.supported_categories
         
