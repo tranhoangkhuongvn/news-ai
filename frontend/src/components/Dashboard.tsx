@@ -169,37 +169,6 @@ const Dashboard: React.FC = () => {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setShowChat(!showChat)}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: showChat ? '#3b82f6' : '#f3f4f6',
-              color: showChat ? 'white' : '#6b7280',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease-in-out',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginLeft: '8px',
-            }}
-            onMouseEnter={(e) => {
-              if (!showChat) {
-                e.currentTarget.style.backgroundColor = '#e5e7eb';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!showChat) {
-                e.currentTarget.style.backgroundColor = '#f3f4f6';
-              }
-            }}
-          >
-            <span>🤖</span>
-            {showChat ? 'Close Chat' : 'AI News Chat'}
-          </button>
         </div>
       </header>
 
@@ -355,7 +324,7 @@ const Dashboard: React.FC = () => {
             <span>API Status: {isHealthy ? '🟢 Connected' : '🔴 Disconnected'}</span>
           </div>
           <div className="developer-acknowledgment">
-            <span>Developed by Khuong Tran © 2025</span>
+            <span>Developed by Khuong Tran 🌟 Rock Star Developer © 2025</span>
           </div>
         </footer>
       </div>
