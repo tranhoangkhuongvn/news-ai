@@ -35,6 +35,19 @@ class BaseNewsExtractor(ABC):
         self.base_url = self.get_base_url()
         self.category_urls = self.get_category_urls()
         self.selectors = self.get_selectors()
+        self.headers = self.get_default_headers()
+
+    def get_default_headers(self) -> Dict[str, str]:
+        """Return default headers for requests"""
+        return {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
+        }
     
     @abstractmethod
     def get_source_name(self) -> str:
@@ -123,7 +136,8 @@ class BaseNewsExtractor(ABC):
         
         try:
             # Get the category page
-            async with self.session.get(category_url) as response:
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with self.session.get(category_url, headers=self.headers, timeout=timeout) as response:
                 if response.status != 200:
                     logger.error(f"Failed to fetch {category_url}: {response.status}")
                     return []
@@ -162,7 +176,8 @@ class BaseNewsExtractor(ABC):
     async def extract_single_article(self, url: str, category: str) -> Optional[NewsArticle]:
         """Extract a single article from its URL"""
         try:
-            async with self.session.get(url) as response:
+            timeout = aiohttp.ClientTimeout(total=20)
+            async with self.session.get(url, headers=self.headers, timeout=timeout) as response:
                 if response.status != 200:
                     logger.debug(f"Failed to fetch article {url}: {response.status}")
                     return None

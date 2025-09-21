@@ -86,14 +86,53 @@ class ABCNewsExtractor(BaseNewsExtractor):
                 href = link.get('href')
                 if href and '/news/' in href:
                     full_url = urljoin(self.base_url, href)
-                    url_slug = full_url.split('/')[-1]
 
-                    # Enhanced filtering for actual articles - now accept numeric IDs too
-                    if ('/topic/' not in full_url and
-                        '#' not in full_url):  # Skip anchor links and topic pages
+                    # Enhanced filtering for actual articles only
+                    if (self._is_valid_abc_article_url(full_url)):
                         article_links.add(full_url)
 
         return list(article_links)
+
+    def _is_valid_abc_article_url(self, url: str) -> bool:
+        """Enhanced URL validation for ABC News articles"""
+        import re
+
+        # Skip non-article pages
+        excluded_patterns = [
+            '/news/emergency', '/news/sport/', '/news/business/', '/news/health/',
+            '/news/music/', '/news/tok-pisin', '/news/rural', '/news/analysis-and-opinion',
+            '/news/corrections', '/news/contact', '/news/about', '/news/for-you',
+            '/news/weather', '/news/radio', '/news/tv', '/topic/', '/categories/',
+            '/news/entertainment/', '/news/politics/', '/news/science/', '/news/arts/',
+            '/news/religion/', '/news/environment/'
+        ]
+
+        # Check if URL contains any excluded patterns
+        for pattern in excluded_patterns:
+            if pattern in url:
+                return False
+
+        # Skip anchor links and query parameters
+        if '#' in url or '?' in url:
+            return False
+
+        # ABC article URLs typically have date patterns or numeric IDs
+        # Pattern: /news/YYYY-MM-DD/article-title/NNNNNNNN or similar
+        abc_article_pattern = r'/news/\d{4}-\d{2}-\d{2}/[^/]+/\d+$'
+
+        if re.search(abc_article_pattern, url):
+            return True
+
+        # Alternative pattern: URLs with substantive content slug and numeric ID
+        # Must have a meaningful slug (more than just category) and end with numbers
+        url_parts = url.split('/')
+        if len(url_parts) >= 5 and url_parts[-1].isdigit() and len(url_parts[-1]) >= 6:
+            # Check that the URL has date and title components
+            for part in url_parts:
+                if re.match(r'\d{4}-\d{2}-\d{2}', part):
+                    return True
+
+        return False
 
     def validate_article_url(self, url: str) -> bool:
         """ABC-specific URL validation"""
@@ -380,13 +419,62 @@ class SMHExtractor(BaseNewsExtractor):
                 href = link.get('href')
                 if href:
                     full_url = urljoin(self.base_url, href)
-                    # Updated filtering for SMH URL patterns
-                    if (any(path in full_url for path in ['/sport/', '/lifestyle/', '/culture/', '/business/']) and
-                        ('-p5' in full_url or '/20' in full_url) and  # SMH article patterns
-                        len(full_url) > 50):  # Reasonable URL length
+                    # Enhanced filtering for SMH URL patterns
+                    if self._is_valid_smh_article_url(full_url):
                         article_links.add(full_url)
 
         return list(article_links)
+
+    def _is_valid_smh_article_url(self, url: str) -> bool:
+        """Enhanced URL validation for SMH articles"""
+        import re
+
+        # Skip non-article pages
+        excluded_patterns = [
+            '/sport/', '/lifestyle/', '/culture/', '/business/',  # Category pages themselves
+            '/politics/', '/national/', '/world/', '/technology/',
+            '/property/', '/environment/', '/entertainment/',
+            '/subscribe', '/premium', '/plus', '/account',
+            '/newsletters', '/contact', '/about'
+        ]
+
+        # Check if URL is a category page (exact match)
+        for pattern in excluded_patterns:
+            if url.endswith(pattern) or url.endswith(pattern.rstrip('/')):
+                return False
+
+        # Skip URLs with query parameters or fragments
+        if '?' in url or '#' in url:
+            return False
+
+        # SMH article URLs should contain category and have proper article structure
+        valid_categories = ['/sport/', '/lifestyle/', '/culture/', '/business/']
+        has_valid_category = any(cat in url for cat in valid_categories)
+
+        if not has_valid_category:
+            return False
+
+        # SMH article URLs typically have specific patterns:
+        # 1. /category/YYYY/MM/DD/article-title-p5XXXXXXX.html
+        # 2. /category/article-title-p5XXXXXXX-h2YYYYYY.html
+        # 3. /category/YYYYMMDD/article-title-p5XXXXXXX.html
+
+        smh_patterns = [
+            r'/\d{4}/\d{2}/\d{2}/[^/]+-p5[a-z0-9]+\.html$',  # Standard date pattern
+            r'/[^/]+-p5[a-z0-9]+-h2[a-z0-9]+\.html$',        # Article with hash
+            r'/\d{8}/[^/]+-p5[a-z0-9]+\.html$',              # Compact date format
+            r'/[^/]+-p5[a-z0-9]+\.html$'                     # Simple article pattern
+        ]
+
+        for pattern in smh_patterns:
+            if re.search(pattern, url):
+                return True
+
+        # Alternative: check for recent articles with date indicators
+        if re.search(r'/(202[4-5]|2025)/', url) and len(url) > 50:
+            return True
+
+        return False
 
     def validate_article_url(self, url: str) -> bool:
         """SMH-specific URL validation"""
